@@ -6,7 +6,9 @@ import lombok.NoArgsConstructor;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.streams.KeyValue;
+import org.apache.kafka.streams.kstream.ForeachAction;
 import org.apache.kafka.streams.kstream.KStream;
+import org.apache.kafka.streams.kstream.KTable;
 import org.apache.kafka.streams.kstream.Materialized;
 import org.apache.kafka.streams.state.KeyValueIterator;
 import org.apache.kafka.streams.state.QueryableStoreTypes;
@@ -85,7 +87,25 @@ public class ClickAnalysisApplication {
 		}
 
 		@Configuration
-		public static class Consumer {
+		public static class TableConsumer {
+
+				private Log log = LogFactory.getLog(getClass());
+
+				@StreamListener
+				public void processCounts(@Input(PAGE_TO_COUNTS) KTable<String, Long> counts) {
+
+						counts
+							.foreach(new ForeachAction<String, Long>() {
+									@Override
+									public void apply(String key, Long value) {
+											log.info(key + "=" + value);
+									}
+							});
+				}
+		}
+
+		@Configuration
+		public static class StreamConsumer {
 
 				private final Log log = LogFactory.getLog(getClass());
 
@@ -95,8 +115,8 @@ public class ClickAnalysisApplication {
 							.filter((key, value) -> value.getTimeSpentInMilliseconds() > 10)
 							.map((key, value) -> new KeyValue<>(value.getPage(), Long.toString(0)))
 							.groupByKey()
-							.count(Materialized.as(PAGE_TO_COUNTS))
-							.foreach((key, value) -> log.info(key + "=" + value));
+							.count(Materialized.as(PAGE_TO_COUNTS));
+							//.foreach((key, value) -> log.info(key + "=" + value));
 				}
 		}
 
@@ -140,6 +160,9 @@ interface PageViewBinding {
 
 		@Input(PAGE_VIEW_EVENTS_IN)
 		KStream<String, PageViewEvent> pageViewEventsIn();
+
+		@Input(PAGE_TO_COUNTS)
+		KTable<String, Long> updatedCounts();
 }
 
 @Data
