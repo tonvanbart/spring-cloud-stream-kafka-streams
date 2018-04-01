@@ -26,6 +26,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
+import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -38,8 +39,7 @@ import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-import static com.example.clickanalysis.PageViewBinding.PAGE_TO_COUNTS;
-import static com.example.clickanalysis.PageViewBinding.PAGE_VIEW_EVENTS_IN;
+import static com.example.clickanalysis.PageViewBinding.*;
 
 @SpringBootApplication
 @EnableBinding(PageViewBinding.class)
@@ -86,13 +86,13 @@ public class ClickAnalysisApplication {
 				}
 		}
 
- 	@Configuration
+		@Configuration
 		public static class TableConsumer {
 
 				private Log log = LogFactory.getLog(getClass());
 
 				@StreamListener
-				public void counts (@Input(PAGE_TO_COUNTS) KTable<String, Long> counts) {
+				public void counts(@Input(PAGE_TO_COUNTS_IN) KTable<String, Long> counts) {
 						log.info("calling counts");
 						counts
 							.foreach(new ForeachAction<String, Long>() {
@@ -110,13 +110,14 @@ public class ClickAnalysisApplication {
 				private final Log log = LogFactory.getLog(getClass());
 
 				@StreamListener
-				public void processPageViews(@Input(PAGE_VIEW_EVENTS_IN) KStream<String, PageViewEvent> views) {
-						views
+				@SendTo(PAGE_TO_COUNTS_OUT)
+				public KStream<String, Long> processPageViews(@Input(PAGE_VIEW_EVENTS_IN) KStream<String, PageViewEvent> views) {
+						return views
 							.filter((key, value) -> value.getTimeSpentInMilliseconds() > 10)
 							.map((key, value) -> new KeyValue<>(value.getPage(), Long.toString(0)))
 							.groupByKey()
-							.count(Materialized.as(PAGE_TO_COUNTS));
-//							.foreach((key, value) -> log.info(key + "=" + value));
+							.count(Materialized.as(PAGE_TO_COUNTS_MV))
+							.toStream();
 				}
 		}
 
@@ -132,7 +133,7 @@ public class ClickAnalysisApplication {
 				@GetMapping("/counts")
 				Map<String, Long> counts() {
 						ReadOnlyKeyValueStore<String, Long> type = this.registry
-							.getQueryableStoreType(PAGE_TO_COUNTS, QueryableStoreTypes.keyValueStore());
+							.getQueryableStoreType(PAGE_TO_COUNTS_MV, QueryableStoreTypes.keyValueStore());
 						Map<String, Long> m = new HashMap<>();
 						KeyValueIterator<String, Long> all = type.all();
 						while (all.hasNext()) {
@@ -150,7 +151,9 @@ public class ClickAnalysisApplication {
 
 interface PageViewBinding {
 
-		String PAGE_TO_COUNTS = "ptc";
+		String PAGE_TO_COUNTS_IN = "ptcin";
+		String PAGE_TO_COUNTS_MV = "ptcmv";
+		String PAGE_TO_COUNTS_OUT = "ptcout";
 
 		String PAGE_VIEW_EVENTS_OUT = "pveout";
 		String PAGE_VIEW_EVENTS_IN = "pvein";
@@ -161,7 +164,11 @@ interface PageViewBinding {
 		@Input(PAGE_VIEW_EVENTS_IN)
 		KStream<String, PageViewEvent> pageViewEventsIn();
 
- @Input(PAGE_TO_COUNTS)	KTable<String, Long> updatedCounts();
+		@Input(PAGE_TO_COUNTS_IN)
+		KTable<String, Long> countsIn();
+
+		@Output(PAGE_TO_COUNTS_OUT)
+		KStream<String, Long> countsOut();
 }
 
 @Data
