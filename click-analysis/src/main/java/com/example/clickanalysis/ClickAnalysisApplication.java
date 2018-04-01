@@ -86,14 +86,14 @@ public class ClickAnalysisApplication {
 				}
 		}
 
-		@Configuration
+ 	@Configuration
 		public static class TableConsumer {
 
 				private Log log = LogFactory.getLog(getClass());
 
 				@StreamListener
-				public void processCounts(@Input(PAGE_TO_COUNTS) KTable<String, Long> counts) {
-
+				public void counts (@Input(PAGE_TO_COUNTS) KTable<String, Long> counts) {
+						log.info("calling counts");
 						counts
 							.foreach(new ForeachAction<String, Long>() {
 									@Override
@@ -116,7 +116,7 @@ public class ClickAnalysisApplication {
 							.map((key, value) -> new KeyValue<>(value.getPage(), Long.toString(0)))
 							.groupByKey()
 							.count(Materialized.as(PAGE_TO_COUNTS));
-							//.foreach((key, value) -> log.info(key + "=" + value));
+//							.foreach((key, value) -> log.info(key + "=" + value));
 				}
 		}
 
@@ -161,8 +161,7 @@ interface PageViewBinding {
 		@Input(PAGE_VIEW_EVENTS_IN)
 		KStream<String, PageViewEvent> pageViewEventsIn();
 
-		@Input(PAGE_TO_COUNTS)
-		KTable<String, Long> updatedCounts();
+ @Input(PAGE_TO_COUNTS)	KTable<String, Long> updatedCounts();
 }
 
 @Data
