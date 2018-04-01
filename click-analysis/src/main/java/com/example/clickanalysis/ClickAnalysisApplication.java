@@ -128,10 +128,6 @@ public class ClickAnalysisApplication {
 		}
 }
 
-/**
-	* We're going to have a stream of page events that we then process with KS and turn into a top-five. That
-	* top-five we'll be able to query as a KTable.
-	*/
 interface PageViewBinding {
 
 		String PAGE_TO_COUNTS = "ptc";
@@ -142,16 +138,9 @@ interface PageViewBinding {
 		@Output(PAGE_VIEW_EVENTS_OUT)
 		MessageChannel pageViewEventsOut();
 
-		/*
-		@Input(PAGE_VIEW_EVENTS_IN)
-		SubscribableChannel pageViewEventsIn();
-		*/
-
 		@Input(PAGE_VIEW_EVENTS_IN)
 		KStream<String, PageViewEvent> pageViewEventsIn();
-
 }
-
 
 @Data
 @AllArgsConstructor
