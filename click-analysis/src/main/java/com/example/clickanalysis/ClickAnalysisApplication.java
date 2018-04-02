@@ -21,7 +21,6 @@ import org.springframework.cloud.stream.annotation.Input;
 import org.springframework.cloud.stream.annotation.Output;
 import org.springframework.cloud.stream.annotation.StreamListener;
 import org.springframework.cloud.stream.binder.kafka.streams.QueryableStoreRegistry;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
@@ -44,15 +43,13 @@ import static com.example.clickanalysis.PageViewBinding.*;
 @EnableBinding(PageViewBinding.class)
 public class ClickAnalysisApplication {
 
-		private final Log log = LogFactory.getLog(getClass());
-
 		@Component
-		public static class Producer implements ApplicationRunner {
+		public static class PageViewSource implements ApplicationRunner {
 
 				private final MessageChannel pageViewsOut;
 				private final Log log = LogFactory.getLog(getClass());
 
-				public Producer(PageViewBinding binding) {
+				public PageViewSource(PageViewBinding binding) {
 						this.pageViewsOut = binding.pageViewEventsOut();
 				}
 
@@ -85,32 +82,12 @@ public class ClickAnalysisApplication {
 				}
 		}
 
-	/*	@Configuration
-		public static class TableConsumer {
-
-				private Log log = LogFactory.getLog(getClass());
-
-				@StreamListener
-				public void counts(@Input(PAGE_TO_COUNTS_IN) KTable<String, Long> counts) {
-						log.info("calling counts");
-						counts
-							.foreach(new ForeachAction<String, Long>() {
-									@Override
-									public void apply(String key, Long value) {
-											log.info(key + "=" + value);
-									}
-							});
-				}
-		} */
-
-		@Configuration
-		public static class StreamConsumer {
-
-				private final Log log = LogFactory.getLog(getClass());
+		@Component
+		public static class PageViewCountProcessor {
 
 				@StreamListener
 				@SendTo(PAGE_TO_COUNTS_OUT)
-				public KStream<String, Long> processPageViews(@Input(PAGE_VIEW_EVENTS_IN) KStream<String, PageViewEvent> views) {
+				public KStream<String, Long> pageViewsToPageCounts(@Input(PAGE_VIEW_EVENTS_IN) KStream<String, PageViewEvent> views) {
 						return views
 							.filter((key, value) -> value.getTimeSpentInMilliseconds() > 10)
 							.map((key, value) -> new KeyValue<>(value.getPage(), Long.toString(0)))
@@ -121,11 +98,12 @@ public class ClickAnalysisApplication {
 		}
 
 		@RestController
-		public static class CountRestController {
+		@SuppressWarnings("unused")
+		public static class PageViewCountRestController {
 
 				private final QueryableStoreRegistry registry;
 
-				public CountRestController(QueryableStoreRegistry registry) {
+				public PageViewCountRestController(QueryableStoreRegistry registry) {
 						this.registry = registry;
 				}
 
@@ -143,16 +121,16 @@ public class ClickAnalysisApplication {
 				}
 		}
 
-		@Configuration
-		public static class Incoming {
+		@Component
+		public static class PageCountSink {
 
 				private Log log = LogFactory.getLog(getClass());
 
 				@StreamListener
 				public void incoming(
-					@Input(PageViewBinding.PAGE_TO_COUNTS_IN) KTable<String, String> table) {
+					@Input(PageViewBinding.PAGE_TO_COUNTS_IN) KTable<String, Long> table) {
 						table
-							.toStream(KeyValue::new)
+							.toStream()
 							.foreach((key, value) -> log.info(key + "=" + value));
 				}
 		}
@@ -162,6 +140,7 @@ public class ClickAnalysisApplication {
 		}
 }
 
+@SuppressWarnings("unused")
 interface PageViewBinding {
 
 		String PAGE_TO_COUNTS_IN = "ptcin";
@@ -181,9 +160,8 @@ interface PageViewBinding {
 		KStream<String, Long> countsOut();
 
 		@Input(PAGE_TO_COUNTS_IN)
-		KTable<String, Long> countsIn();
+		KTable<?, ?> countsIn();
 }
-
 
 @Data
 @AllArgsConstructor
