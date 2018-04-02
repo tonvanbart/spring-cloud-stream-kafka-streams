@@ -56,7 +56,7 @@ public class ClickAnalysisApplication {
 				@Override
 				public void run(ApplicationArguments args) {
 						List<String> pages = Arrays.asList("news", "initializr", "blog", "about", "sitemap", "colophon");
-						List<String> users = Arrays.asList("jgrelle", "mbhave", "cdavis", "ehendrickson", "dsyer", "pwebb", "jlong", "mgray");
+						List<String> users = Arrays.asList("jgrelle", "mbhave", "cdavis", "ehendrickson", "dsyer", "pwebb", "schacko", "mgray");
 						Runnable runnable = () -> {
 								String user = users.get(random(users.size() - 1));
 								String page = pages.get(random(pages.size() - 1));
