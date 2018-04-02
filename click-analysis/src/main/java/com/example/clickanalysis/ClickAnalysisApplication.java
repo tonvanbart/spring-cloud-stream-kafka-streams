@@ -6,7 +6,6 @@ import lombok.NoArgsConstructor;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.streams.KeyValue;
-import org.apache.kafka.streams.kstream.ForeachAction;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.KTable;
 import org.apache.kafka.streams.kstream.Materialized;
@@ -86,7 +85,7 @@ public class ClickAnalysisApplication {
 				}
 		}
 
-		@Configuration
+	/*	@Configuration
 		public static class TableConsumer {
 
 				private Log log = LogFactory.getLog(getClass());
@@ -102,7 +101,7 @@ public class ClickAnalysisApplication {
 									}
 							});
 				}
-		}
+		} */
 
 		@Configuration
 		public static class StreamConsumer {
@@ -144,6 +143,20 @@ public class ClickAnalysisApplication {
 				}
 		}
 
+		@Configuration
+		public static class Incoming {
+
+				private Log log = LogFactory.getLog(getClass());
+
+				@StreamListener
+				public void incoming(
+					@Input(PageViewBinding.PAGE_TO_COUNTS_IN) KTable<String, String> table) {
+						table
+							.toStream(KeyValue::new)
+							.foreach((key, value) -> log.info(key + "=" + value));
+				}
+		}
+
 		public static void main(String[] args) {
 				SpringApplication.run(ClickAnalysisApplication.class, args);
 		}
@@ -164,12 +177,13 @@ interface PageViewBinding {
 		@Input(PAGE_VIEW_EVENTS_IN)
 		KStream<String, PageViewEvent> pageViewEventsIn();
 
-		@Input(PAGE_TO_COUNTS_IN)
-		KTable<String, Long> countsIn();
-
 		@Output(PAGE_TO_COUNTS_OUT)
 		KStream<String, Long> countsOut();
+
+		@Input(PAGE_TO_COUNTS_IN)
+		KTable<String, Long> countsIn();
 }
+
 
 @Data
 @AllArgsConstructor
