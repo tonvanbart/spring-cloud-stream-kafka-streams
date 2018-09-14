@@ -14,6 +14,7 @@ public class LoggingConsumerApplication {
     SpringApplication.run(LoggingConsumerApplication.class, args);
   }
 
+  // kafka-topics --list --zookeeper localhost:2181 --> topic "input"
   @StreamListener(Sink.INPUT)
   public void handle(Person person) {
     System.out.println("Received: " + person);
