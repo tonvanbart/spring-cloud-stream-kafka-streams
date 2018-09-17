@@ -1,5 +1,8 @@
 package com.example.cloudstream;
 
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.ToString;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.stream.annotation.EnableBinding;
@@ -20,16 +23,10 @@ public class LoggingConsumerApplication {
     System.out.println("Received: " + person);
   }
 
+  @Data
+  @NoArgsConstructor
+  @ToString
   public static class Person {
     private String name;
-    public String getName() {
-      return name;
-    }
-    public void setName(String name) {
-      this.name = name;
-    }
-    public String toString() {
-      return this.name;
-    }
   }
 }
